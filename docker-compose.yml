@@ -40,6 +40,10 @@ services:
       DATABASE_URL: postgresql+asyncpg://bazi:bazi123@db:5432/bazi_db
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: change-this-to-a-random-string-in-production
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
     volumes:
       - upload_data:/app/uploads
     depends_on:
