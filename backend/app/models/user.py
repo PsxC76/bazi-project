@@ -9,7 +9,8 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, index=True, nullable=False)
-    email = Column(String(255), unique=True, index=True, nullable=False)
+    email = Column(String(255), unique=True, index=True, nullable=True)
+    email_verified = Column(Boolean, default=False)
     hashed_password = Column(String(255), nullable=False)
     nickname = Column(String(100), nullable=True)
     avatar = Column(String(500), nullable=True)
@@ -20,3 +21,16 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     cases = relationship("Case", back_populates="owner", lazy="selectin")
+
+
+class EmailVerification(Base):
+    """邮箱验证码表"""
+    __tablename__ = "email_verifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), nullable=False, index=True)
+    code = Column(String(6), nullable=False)
+    purpose = Column(String(20), nullable=False, default="bind")  # bind / reset
+    is_used = Column(Boolean, default=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

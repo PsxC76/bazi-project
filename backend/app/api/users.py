@@ -6,7 +6,11 @@ from sqlalchemy import select, or_
 from app.core.database import get_db
 from app.core.security import get_password_hash, verify_password, create_access_token, get_current_user
 from app.models.user import User
-from app.schemas.user import UserRegister, UserLogin, UserOut, UserUpdate, PasswordChange, Token
+from app.schemas.user import (
+    UserRegister, UserLogin, UserOut, UserUpdate,
+    PasswordChange, Token, EmailBindRequest, EmailVerifyRequest,
+)
+from app.services.email_service import create_verification_code, verify_code, send_verification_email
 from app.core.config import settings
 
 router = APIRouter(prefix="/users", tags=["用户"])
@@ -14,18 +18,15 @@ router = APIRouter(prefix="/users", tags=["用户"])
 
 @router.post("/register", response_model=Token, summary="用户注册")
 async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
-    # Check if username or email exists
-    result = await db.execute(
-        select(User).where(or_(User.username == data.username, User.email == data.email))
-    )
+    # 检查用户名是否已存在
+    result = await db.execute(select(User).where(User.username == data.username))
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="用户名或邮箱已存在")
+        raise HTTPException(status_code=400, detail="该账号已被注册")
 
     user = User(
         username=data.username,
-        email=data.email,
         hashed_password=get_password_hash(data.password),
-        nickname=data.nickname or data.username,
+        nickname=data.username,
     )
     db.add(user)
     await db.flush()
@@ -38,13 +39,13 @@ async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
 @router.post("/login", response_model=Token, summary="用户登录")
 async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(User).where(or_(User.username == data.username, User.email == data.username))
+        select(User).where(User.username == data.username)
     )
     user = result.scalar_one_or_none()
     if not user or not verify_password(data.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="用户名或密码错误")
+        raise HTTPException(status_code=401, detail="账号或密码错误")
     if not user.is_active:
-        raise HTTPException(status_code=400, detail="用户已被禁用")
+        raise HTTPException(status_code=400, detail="账号已被禁用")
 
     token = create_access_token(data={"sub": user.id})
     return Token(access_token=token, user=UserOut.model_validate(user))
@@ -96,7 +97,6 @@ async def upload_avatar(
     if len(contents) > settings.MAX_AVATAR_SIZE:
         raise HTTPException(status_code=400, detail="图片大小不能超过2MB")
 
-    # Save file
     ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
     filename = f"{uuid.uuid4().hex}.{ext}"
     avatar_dir = os.path.join(settings.UPLOAD_DIR, "avatars")
@@ -110,6 +110,53 @@ async def upload_avatar(
     await db.flush()
     await db.refresh(current_user)
     return UserOut.model_validate(current_user)
+
+
+# ============================================================
+# 邮箱绑定
+# ============================================================
+
+@router.post("/me/email/send-code", summary="发送邮箱验证码")
+async def send_email_code(
+    data: EmailBindRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # 检查邮箱是否已被其他用户绑定
+    result = await db.execute(select(User).where(User.email == data.email))
+    existing = result.scalar_one_or_none()
+    if existing and existing.id != current_user.id:
+        raise HTTPException(status_code=400, detail="该邮箱已被其他账号绑定")
+
+    # 创建验证码
+    code = await create_verification_code(db, data.email, purpose="bind")
+
+    # 发送邮件
+    sent = await send_verification_email(data.email, code)
+    if not sent:
+        raise HTTPException(status_code=500, detail="邮件发送失败，请稍后重试")
+
+    return {"message": "验证码已发送到您的邮箱，10分钟内有效"}
+
+
+@router.post("/me/email/verify", summary="验证邮箱并绑定")
+async def verify_email(
+    data: EmailVerifyRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # 验证验证码
+    valid = await verify_code(db, data.email, data.code, purpose="bind")
+    if not valid:
+        raise HTTPException(status_code=400, detail="验证码错误或已过期")
+
+    # 绑定邮箱
+    current_user.email = data.email
+    current_user.email_verified = True
+    await db.flush()
+    await db.refresh(current_user)
+
+    return {"message": "邮箱绑定成功", "email": data.email}
 
 
 # Admin endpoints

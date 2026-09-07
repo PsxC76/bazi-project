@@ -11,60 +11,51 @@
 
       <form @submit.prevent="handleRegister" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <div class="space-y-5">
+          <!-- 账号 -->
           <div>
-            <label class="form-label">用户名</label>
+            <label class="form-label">账号</label>
             <input
               v-model="form.username"
               type="text"
               class="form-input"
-              placeholder="3-50个字符，字母数字下划线"
-              required
+              :class="{ 'border-red-400': errors.username }"
+              placeholder="不少于6位，字母、数字或下划线"
+              @input="validateUsername"
             />
+            <p v-if="errors.username" class="text-red-500 text-xs mt-1">{{ errors.username }}</p>
+            <p v-else class="text-gray-400 text-xs mt-1">6-50个字符，只能包含字母、数字、下划线</p>
           </div>
 
-          <div>
-            <label class="form-label">邮箱</label>
-            <input
-              v-model="form.email"
-              type="email"
-              class="form-input"
-              placeholder="请输入邮箱地址"
-              required
-            />
-          </div>
-
-          <div>
-            <label class="form-label">昵称</label>
-            <input
-              v-model="form.nickname"
-              type="text"
-              class="form-input"
-              placeholder="选填，默认为用户名"
-            />
-          </div>
-
+          <!-- 密码 -->
           <div>
             <label class="form-label">密码</label>
             <input
               v-model="form.password"
               type="password"
               class="form-input"
-              placeholder="至少6个字符"
-              required
+              :class="{ 'border-red-400': errors.password }"
+              placeholder="不少于8位，字母、数字或下划线"
+              @input="validatePassword"
             />
+            <p v-if="errors.password" class="text-red-500 text-xs mt-1">{{ errors.password }}</p>
+            <p v-else class="text-gray-400 text-xs mt-1">8位以上，只能包含字母、数字、下划线</p>
           </div>
 
+          <!-- 确认密码 -->
           <div>
             <label class="form-label">确认密码</label>
             <input
               v-model="form.confirmPassword"
               type="password"
               class="form-input"
+              :class="{ 'border-red-400': errors.confirmPassword }"
               placeholder="请再次输入密码"
-              required
+              @input="validateConfirmPassword"
             />
+            <p v-if="errors.confirmPassword" class="text-red-500 text-xs mt-1">{{ errors.confirmPassword }}</p>
           </div>
 
+          <!-- 全局错误 -->
           <div v-if="error" class="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
             {{ error }}
           </div>
@@ -88,7 +79,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import { useUserStore } from '~/stores/user'
 
 useHead({ title: '注册 - 八字命理案例库' })
@@ -96,40 +87,95 @@ useHead({ title: '注册 - 八字命理案例库' })
 const userStore = useUserStore()
 const form = ref({
   username: '',
-  email: '',
-  nickname: '',
+  password: '',
+  confirmPassword: '',
+})
+const errors = reactive({
+  username: '',
   password: '',
   confirmPassword: '',
 })
 const error = ref('')
 const loading = ref(false)
 
+const validateUsername = () => {
+  const v = form.value.username
+  if (!v) {
+    errors.username = ''
+    return
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(v)) {
+    errors.username = '账号只能包含字母、数字、下划线'
+    return
+  }
+  if (v.length < 6) {
+    errors.username = '账号长度不能少于6位'
+    return
+  }
+  errors.username = ''
+}
+
+const validatePassword = () => {
+  const v = form.value.password
+  if (!v) {
+    errors.password = ''
+    return
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(v)) {
+    errors.password = '密码只能包含字母、数字、下划线'
+    return
+  }
+  if (v.length < 8) {
+    errors.password = '密码长度不能少于8位'
+    return
+  }
+  errors.password = ''
+  // 如果确认密码已填写，重新校验
+  if (form.value.confirmPassword) {
+    validateConfirmPassword()
+  }
+}
+
+const validateConfirmPassword = () => {
+  if (!form.value.confirmPassword) {
+    errors.confirmPassword = ''
+    return
+  }
+  if (form.value.confirmPassword !== form.value.password) {
+    errors.confirmPassword = '两次输入的密码不一致'
+    return
+  }
+  errors.confirmPassword = ''
+}
+
 const handleRegister = async () => {
   error.value = ''
 
-  if (!form.value.username || !form.value.email || !form.value.password) {
-    error.value = '请填写所有必填项'
+  // 全面校验
+  validateUsername()
+  validatePassword()
+  validateConfirmPassword()
+
+  if (errors.username || errors.password || errors.confirmPassword) {
     return
   }
 
-  if (form.value.password.length < 6) {
-    error.value = '密码至少需要6个字符'
+  if (!form.value.username) {
+    errors.username = '请输入账号'
     return
   }
-
-  if (form.value.password !== form.value.confirmPassword) {
-    error.value = '两次输入的密码不一致'
+  if (!form.value.password) {
+    errors.password = '请输入密码'
+    return
+  }
+  if (!form.value.confirmPassword) {
+    errors.confirmPassword = '请确认密码'
     return
   }
 
   loading.value = true
   try {
-    await userStore.register(
-      form.value.username,
-      form.value.email,
-      form.value.password,
-      form.value.nickname || undefined
-    )
+    await userStore.register(form.value.username, form.value.password)
     navigateTo('/cases')
   } catch (e) {
     error.value = e.message || '注册失败'

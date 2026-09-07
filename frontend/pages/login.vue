@@ -12,12 +12,12 @@
       <form @submit.prevent="handleLogin" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <div class="space-y-5">
           <div>
-            <label class="form-label">用户名 / 邮箱</label>
+            <label class="form-label">账号</label>
             <input
               v-model="form.username"
               type="text"
               class="form-input"
-              placeholder="请输入用户名或邮箱"
+              placeholder="请输入账号"
               required
             />
           </div>
@@ -69,7 +69,7 @@ const loading = ref(false)
 const handleLogin = async () => {
   error.value = ''
   if (!form.value.username || !form.value.password) {
-    error.value = '请输入用户名和密码'
+    error.value = '请输入账号和密码'
     return
   }
   loading.value = true

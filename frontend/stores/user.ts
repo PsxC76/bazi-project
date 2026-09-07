@@ -50,8 +50,8 @@ export const useUserStore = defineStore('user', () => {
     return data
   }
 
-  const register = async (username: string, email: string, password: string, nickname?: string) => {
-    const data = await api.post('/users/register', { username, email, password, nickname })
+  const register = async (username: string, password: string) => {
+    const data = await api.post('/users/register', { username, password })
     token.value = data.access_token
     user.value = data.user
     if (import.meta.client) {
@@ -110,6 +110,17 @@ export const useUserStore = defineStore('user', () => {
     return result
   }
 
+  const sendEmailCode = async (email: string) => {
+    return await api.post('/users/me/email/send-code', { email })
+  }
+
+  const verifyEmail = async (email: string, code: string) => {
+    const result = await api.post('/users/me/email/verify', { email, code })
+    // 刷新用户信息
+    await fetchProfile()
+    return result
+  }
+
   // Init on store creation
   init()
 
@@ -125,5 +136,7 @@ export const useUserStore = defineStore('user', () => {
     updateProfile,
     changePassword,
     uploadAvatar,
+    sendEmailCode,
+    verifyEmail,
   }
 })
