@@ -131,7 +131,7 @@ const handleRegister = async () => {
       form.value.nickname || undefined
     )
     navigateTo('/cases')
-  } catch (e: any) {
+  } catch (e) {
     error.value = e.message || '注册失败'
   } finally {
     loading.value = false

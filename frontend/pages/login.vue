@@ -76,7 +76,7 @@ const handleLogin = async () => {
   try {
     await userStore.login(form.value.username, form.value.password)
     navigateTo('/cases')
-  } catch (e: any) {
+  } catch (e) {
     error.value = e.message || '登录失败'
   } finally {
     loading.value = false
