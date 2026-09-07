@@ -5,16 +5,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;700&display=swap');
 
 :root {
-  --color-bg: #FAF4E3;
-  --color-card: #FEFCF8;
-  --color-card-alt: #F0F0F0;
-  --color-text: #333333;
-  --color-text-secondary: #666666;
-  --color-text-muted: #888888;
-  --color-nav: #191928;
-  --color-border: #E0E0E0;
-  --color-accent: #C83C23;
-  --color-success: #2E8B57;
+  --color-primary: #16a34a;
+  --color-primary-light: #22c55e;
+  --color-primary-dark: #15803d;
+  --color-accent: #0ea5e9;
+  --color-gold: #f59e0b;
+  --color-bg: #f8faf9;
+  --color-card: #ffffff;
+  --color-text: #1a1a2e;
+  --color-text-secondary: #64748b;
+  --color-border: #e2e8f0;
 }
 
 * {
@@ -24,147 +24,167 @@
 }
 
 body {
-  font-family: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   background-color: var(--color-bg);
   color: var(--color-text);
-  line-height: 1.8;
-  letter-spacing: 0.02em;
+  line-height: 1.6;
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #F0F0F0; }
-::-webkit-scrollbar-thumb { background: #CCCCCC; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #888888; }
-
-/* 页面过渡 */
-.page-enter-active, .page-leave-active { transition: all 0.3s ease; }
-.page-enter-from, .page-leave-to { opacity: 0; transform: translateY(10px); }
-
-/* 卡片 */
-.card-hover {
-  transition: all 0.3s ease;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-}
-.card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-/* 八字排盘柱 */
-.bazi-pillar {
-  background: linear-gradient(135deg, #FEFCF8 0%, #FAF4E3 100%);
-  border: 1.5px solid #E0E0E0;
-  border-radius: 8px;
-  padding: 16px;
-  text-align: center;
-  min-width: 80px;
-  transition: border-color 0.2s;
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
 }
-.bazi-pillar:hover { border-color: #C83C23; }
-.bazi-pillar .stem {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #191928;
-  font-family: 'Noto Serif SC', serif;
-}
-.bazi-pillar .branch {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #191928;
-  font-family: 'Noto Serif SC', serif;
-}
-.bazi-pillar .element {
-  font-size: 0.75rem;
-  color: #888888;
-  margin-top: 4px;
-  font-family: 'Consolas', monospace;
-}
-.bazi-pillar .ten-god {
-  font-size: 0.8rem;
-  color: #C83C23;
-  font-weight: 500;
-  margin-top: 8px;
-  padding: 2px 8px;
-  background: #FDF2F0;
+
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
   border-radius: 4px;
 }
 
-/* 标签 */
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Page transition */
+.page-enter-active,
+.page-leave-active {
+  transition: all 0.3s ease;
+}
+
+.page-enter-from,
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+/* Card hover effect */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+}
+
+/* Bazi pillar styling */
+.bazi-pillar {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 2px solid #86efac;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  min-width: 80px;
+}
+
+.bazi-pillar .stem {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #166534;
+  font-family: 'Noto Serif SC', serif;
+}
+
+.bazi-pillar .branch {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #166534;
+  font-family: 'Noto Serif SC', serif;
+}
+
+.bazi-pillar .element {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.bazi-pillar .ten-god {
+  font-size: 0.875rem;
+  color: #0ea5e9;
+  font-weight: 500;
+  margin-top: 8px;
+  padding: 2px 8px;
+  background: #f0f9ff;
+  border-radius: 4px;
+}
+
+/* Tag styling */
 .tag-item {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 2px 10px;
-  border-radius: 4px;
+  border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 500;
-  background: #F0F0F0;
-  color: #333333;
-  border: 1px solid #E0E0E0;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
 }
 
-/* 表单 */
+/* Form styling */
 .form-label {
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #333333;
+  color: #374151;
   margin-bottom: 4px;
 }
+
 .form-input {
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #E0E0E0;
-  border-radius: 6px;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
   font-size: 0.875rem;
-  background: #FEFCF8;
   transition: all 0.2s;
   outline: none;
-  color: #333333;
 }
-.form-input:focus {
-  border-color: #C83C23;
-  box-shadow: 0 0 0 3px rgba(200, 60, 35, 0.08);
-}
-.form-input::placeholder { color: #CCCCCC; }
 
-/* 按钮 */
+.form-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+}
+
+/* Button styles */
 .btn-primary {
-  background: #C83C23;
+  background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
   color: white;
   padding: 8px 24px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-weight: 500;
   transition: all 0.3s;
   border: none;
   cursor: pointer;
 }
+
 .btn-primary:hover {
-  background: #A0301C;
+  background: linear-gradient(135deg, #15803d 0%, #16a34a 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(200, 60, 35, 0.2);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
 }
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
+
 .btn-secondary {
-  background: #FEFCF8;
-  color: #C83C23;
+  background: white;
+  color: #16a34a;
   padding: 8px 24px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-weight: 500;
   transition: all 0.3s;
-  border: 1px solid #C83C23;
+  border: 1px solid #16a34a;
   cursor: pointer;
 }
-.btn-secondary:hover { background: #FDF2F0; }
 
-/* 五行颜色 */
-.wx-wood { color: #2E8B57; }
-.wx-fire { color: #C83C23; }
-.wx-earth { color: #D4A017; }
-.wx-metal { color: #888888; }
-.wx-water { color: #191928; }
+.btn-secondary:hover {
+  background: #f0fdf4;
+}
+
+/* Element colors */
+.wx-wood { color: #16a34a; }    /* 木 - 绿色 */
+.wx-fire { color: #dc2626; }    /* 火 - 红色 */
+.wx-earth { color: #d97706; }   /* 土 - 黄色 */
+.wx-metal { color: #6b7280; }   /* 金 - 白/灰色 */
+.wx-water { color: #2563eb; }   /* 水 - 蓝色 */

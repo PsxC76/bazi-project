@@ -1,41 +1,27 @@
-// 全局 token 存储
-let _token: string | null = null
-
-export function setAuthToken(token: string | null) {
-  _token = token
-  if (import.meta.client) {
-    if (token) {
-      localStorage.setItem('token', token)
-    } else {
-      localStorage.removeItem('token')
-    }
-  }
-}
-
-export function getAuthToken(): string | null {
-  if (_token) return _token
-  if (import.meta.client) {
-    _token = localStorage.getItem('token')
-  }
-  return _token
-}
-
 export function useApi() {
   const config = useRuntimeConfig()
   const baseURL = config.public.apiBase as string
 
-  const request = async (method: string, path: string, body?: any) => {
-    const url = `${baseURL}${path}`
+  const getHeaders = (): Record<string, string> => {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     }
+    if (import.meta.client) {
+      const token = localStorage.getItem('token')
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+    }
+    return headers
+  }
 
-    const token = getAuthToken()
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+  const request = async (method: string, path: string, body?: any) => {
+    const url = `${baseURL}${path}`
+    const options: RequestInit = {
+      method,
+      headers: getHeaders(),
     }
 
-    const options: RequestInit = { method, headers }
     if (body && method !== 'GET') {
       options.body = JSON.stringify(body)
     }
@@ -44,13 +30,14 @@ export function useApi() {
     try {
       response = await fetch(url, options)
     } catch (e: any) {
-      throw new Error('无法连接到服务器，请确认后端已启动')
+      throw new Error('无法连接到服务器，请确认后端已启动 (localhost:8000)')
     }
 
     if (!response.ok) {
       let detail = `请求失败 (${response.status})`
       try {
         const err = await response.json()
+        // FastAPI 返回 {detail: "..."} 或 {detail: [{msg: "..."}, ...]}
         if (err.detail) {
           if (typeof err.detail === 'string') {
             detail = err.detail
@@ -60,7 +47,9 @@ export function useApi() {
             detail = JSON.stringify(err.detail)
           }
         }
-      } catch { /* ignore */ }
+      } catch {
+        // ignore json parse error
+      }
       throw new Error(detail)
     }
 
@@ -70,24 +59,34 @@ export function useApi() {
   const upload = async (path: string, formData: FormData) => {
     const url = `${baseURL}${path}`
     const headers: Record<string, string> = {}
-    const token = getAuthToken()
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+    if (import.meta.client) {
+      const token = localStorage.getItem('token')
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
     }
 
     let response: Response
     try {
-      response = await fetch(url, { method: 'POST', headers, body: formData })
+      response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: formData,
+      })
     } catch (e: any) {
-      throw new Error('无法连接到服务器，请确认后端已启动')
+      throw new Error('无法连接到服务器，请确认后端已启动 (localhost:8000)')
     }
 
     if (!response.ok) {
       let detail = '上传失败'
       try {
         const err = await response.json()
-        if (err.detail) detail = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail)
-      } catch { /* ignore */ }
+        if (err.detail) {
+          detail = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail)
+        }
+      } catch {
+        // ignore
+      }
       throw new Error(detail)
     }
 

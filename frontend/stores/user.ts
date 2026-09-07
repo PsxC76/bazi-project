@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useApi, setAuthToken, getAuthToken } from '~/utils/api'
+import { useApi } from '~/utils/api'
 
 interface User {
   id: number
   username: string
-  email: string | null
+  email: string
   nickname: string | null
   avatar: string | null
   bio: string | null
@@ -15,27 +15,36 @@ interface User {
 
 export const useUserStore = defineStore('user', () => {
   const user = ref<User | null>(null)
+  const token = ref<string | null>(null)
   const api = useApi()
 
-  const isLoggedIn = computed(() => !!getAuthToken())
+  const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.is_admin || false)
 
-  // 初始化：从 localStorage 恢复用户信息
+  // Initialize from localStorage
   const init = () => {
     if (import.meta.client) {
+      const savedToken = localStorage.getItem('token')
       const savedUser = localStorage.getItem('user')
-      if (savedUser) {
-        try { user.value = JSON.parse(savedUser) } catch { /* ignore */ }
+      if (savedToken) {
+        token.value = savedToken
       }
-      // token 由 api.ts 自动从 localStorage 读取
+      if (savedUser) {
+        try {
+          user.value = JSON.parse(savedUser)
+        } catch (e) {
+          // ignore
+        }
+      }
     }
   }
 
   const login = async (username: string, password: string) => {
     const data = await api.post('/users/login', { username, password })
-    setAuthToken(data.access_token)
+    token.value = data.access_token
     user.value = data.user
     if (import.meta.client) {
+      localStorage.setItem('token', data.access_token)
       localStorage.setItem('user', JSON.stringify(data.user))
     }
     return data
@@ -43,31 +52,33 @@ export const useUserStore = defineStore('user', () => {
 
   const register = async (username: string, password: string) => {
     const data = await api.post('/users/register', { username, password })
-    setAuthToken(data.access_token)
+    token.value = data.access_token
     user.value = data.user
     if (import.meta.client) {
+      localStorage.setItem('token', data.access_token)
       localStorage.setItem('user', JSON.stringify(data.user))
     }
     return data
   }
 
   const logout = () => {
-    setAuthToken(null)
+    token.value = null
     user.value = null
     if (import.meta.client) {
+      localStorage.removeItem('token')
       localStorage.removeItem('user')
     }
   }
 
   const fetchProfile = async () => {
-    if (!getAuthToken()) return
+    if (!token.value) return
     try {
       const data = await api.get('/users/me')
       user.value = data
       if (import.meta.client) {
         localStorage.setItem('user', JSON.stringify(data))
       }
-    } catch {
+    } catch (e) {
       logout()
     }
   }
@@ -105,15 +116,17 @@ export const useUserStore = defineStore('user', () => {
 
   const verifyEmail = async (email: string, code: string) => {
     const result = await api.post('/users/me/email/verify', { email, code })
+    // 刷新用户信息
     await fetchProfile()
     return result
   }
 
-  // 初始化
+  // Init on store creation
   init()
 
   return {
     user,
+    token,
     isLoggedIn,
     isAdmin,
     login,
