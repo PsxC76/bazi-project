@@ -7,11 +7,13 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.api import users, cases, bazi
 
+# 确保 uploads 目录存在
+os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     await init_db()
     yield
     # Shutdown

@@ -107,6 +107,16 @@ const loading = ref(false)
 const handleRegister = async () => {
   error.value = ''
 
+  if (!form.value.username || !form.value.email || !form.value.password) {
+    error.value = '请填写所有必填项'
+    return
+  }
+
+  if (form.value.password.length < 6) {
+    error.value = '密码至少需要6个字符'
+    return
+  }
+
   if (form.value.password !== form.value.confirmPassword) {
     error.value = '两次输入的密码不一致'
     return
@@ -121,7 +131,7 @@ const handleRegister = async () => {
       form.value.nickname || undefined
     )
     navigateTo('/cases')
-  } catch (e) {
+  } catch (e: any) {
     error.value = e.message || '注册失败'
   } finally {
     loading.value = false

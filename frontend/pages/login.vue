@@ -68,11 +68,15 @@ const loading = ref(false)
 
 const handleLogin = async () => {
   error.value = ''
+  if (!form.value.username || !form.value.password) {
+    error.value = '请输入用户名和密码'
+    return
+  }
   loading.value = true
   try {
     await userStore.login(form.value.username, form.value.password)
     navigateTo('/cases')
-  } catch (e) {
+  } catch (e: any) {
     error.value = e.message || '登录失败'
   } finally {
     loading.value = false

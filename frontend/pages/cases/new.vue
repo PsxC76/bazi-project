@@ -1,15 +1,27 @@
 <template>
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="mb-8">
-      <NuxtLink to="/cases" class="text-sm text-gray-500 hover:text-primary-600 flex items-center gap-1 mb-4">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-        </svg>
-        返回案例列表
-      </NuxtLink>
-      <h1 class="text-3xl font-bold text-gray-900 font-serif">新建案例</h1>
-      <p class="text-gray-500 mt-1">填写命主信息，系统将自动计算八字</p>
+    <!-- 未登录提示 -->
+    <div v-if="needLogin" class="text-center py-16">
+      <div class="text-6xl mb-4">🔐</div>
+      <h2 class="text-2xl font-bold text-gray-900 mb-2">请先登录</h2>
+      <p class="text-gray-500 mb-6">创建案例需要登录账号</p>
+      <div class="flex justify-center gap-4">
+        <NuxtLink to="/login" class="btn-primary">去登录</NuxtLink>
+        <NuxtLink to="/register" class="btn-secondary">去注册</NuxtLink>
+      </div>
     </div>
+
+    <template v-else>
+      <div class="mb-8">
+        <NuxtLink to="/cases" class="text-sm text-gray-500 hover:text-primary-600 flex items-center gap-1 mb-4">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          返回案例列表
+        </NuxtLink>
+        <h1 class="text-3xl font-bold text-gray-900 font-serif">新建案例</h1>
+        <p class="text-gray-500 mt-1">填写命主信息，系统将自动计算八字</p>
+      </div>
 
     <form @submit.prevent="handleSubmit" class="space-y-8">
       <!-- Basic Info -->
@@ -166,6 +178,7 @@
         </button>
       </div>
     </form>
+    </template>
   </div>
 </template>
 
@@ -179,8 +192,17 @@ useHead({ title: '新建案例 - 八字命理案例库' })
 const api = useApi()
 const userStore = useUserStore()
 const route = useRoute()
+const router = useRouter()
 const submitting = ref(false)
 const baziPreview = ref(null)
+const needLogin = ref(false)
+
+// 检查登录状态
+onMounted(() => {
+  if (!userStore.isLoggedIn) {
+    needLogin.value = true
+  }
+})
 
 const tagNames = ['职业', '学历', '婚姻', '财富', '寿夭', '健康', '性格', '其他']
 
@@ -261,6 +283,11 @@ watch(
 )
 
 const handleSubmit = async () => {
+  if (!userStore.isLoggedIn) {
+    alert('请先登录')
+    navigateTo('/login')
+    return
+  }
   submitting.value = true
   try {
     const tags = form.value.tags

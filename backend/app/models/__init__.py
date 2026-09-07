@@ -1,2 +1,2 @@
 from app.models.user import User
-from app.models.case import Case, CaseTag, Tag
+from app.models.case import Case, Tag

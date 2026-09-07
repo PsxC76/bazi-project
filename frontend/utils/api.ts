@@ -2,7 +2,7 @@ export function useApi() {
   const config = useRuntimeConfig()
   const baseURL = config.public.apiBase as string
 
-  const getHeaders = () => {
+  const getHeaders = (): Record<string, string> => {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     }
@@ -26,11 +26,31 @@ export function useApi() {
       options.body = JSON.stringify(body)
     }
 
-    const response = await fetch(url, options)
+    let response: Response
+    try {
+      response = await fetch(url, options)
+    } catch (e: any) {
+      throw new Error('无法连接到服务器，请确认后端已启动 (localhost:8000)')
+    }
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: '请求失败' }))
-      throw new Error(error.detail || `HTTP ${response.status}`)
+      let detail = `请求失败 (${response.status})`
+      try {
+        const err = await response.json()
+        // FastAPI 返回 {detail: "..."} 或 {detail: [{msg: "..."}, ...]}
+        if (err.detail) {
+          if (typeof err.detail === 'string') {
+            detail = err.detail
+          } else if (Array.isArray(err.detail)) {
+            detail = err.detail.map((d: any) => d.msg || JSON.stringify(d)).join('; ')
+          } else {
+            detail = JSON.stringify(err.detail)
+          }
+        }
+      } catch {
+        // ignore json parse error
+      }
+      throw new Error(detail)
     }
 
     return response.json()
@@ -46,15 +66,28 @@ export function useApi() {
       }
     }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: formData,
-    })
+    let response: Response
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: formData,
+      })
+    } catch (e: any) {
+      throw new Error('无法连接到服务器，请确认后端已启动 (localhost:8000)')
+    }
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: '上传失败' }))
-      throw new Error(error.detail || `HTTP ${response.status}`)
+      let detail = '上传失败'
+      try {
+        const err = await response.json()
+        if (err.detail) {
+          detail = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail)
+        }
+      } catch {
+        // ignore
+      }
+      throw new Error(detail)
     }
 
     return response.json()
