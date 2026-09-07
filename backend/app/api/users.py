@@ -1,5 +1,7 @@
 import os
 import uuid
+import hashlib
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
@@ -26,7 +28,7 @@ async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
     user = User(
         username=data.username,
         hashed_password=get_password_hash(data.password),
-        nickname=data.username,
+        nickname="UID_" + hashlib.md5(f"{data.username}{datetime.now().timestamp()}".encode()).hexdigest()[:8],
     )
     db.add(user)
     await db.flush()
