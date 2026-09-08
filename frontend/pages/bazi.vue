@@ -151,14 +151,14 @@
         </div>
       </div>
 
-      <!-- Major Luck -->
+      <!-- Major Luck (12步) -->
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
         <h2 class="text-xl font-bold text-gray-900 mb-6 font-serif">大运</h2>
 
-        <div class="flex flex-wrap gap-3">
-          <div v-for="luck in result.major_luck" :key="luck.pillar" class="flex-shrink-0 p-4 bg-gradient-to-br from-primary-50 to-white rounded-xl border border-primary-100 min-w-[100px] text-center">
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-3">
+          <div v-for="(luck, idx) in displayLuck" :key="idx" class="p-3 bg-gradient-to-br from-primary-50 to-white rounded-xl border border-primary-100 text-center">
             <div class="text-xs text-gray-400 mb-1">{{ luck.start_age }}-{{ luck.end_age }}岁</div>
-            <div class="text-xl font-bold font-serif text-primary-800">{{ luck.pillar }}</div>
+            <div class="text-lg font-bold font-serif text-primary-800">{{ luck.pillar }}</div>
             <div class="text-xs text-primary-600 mt-1">{{ luck.ten_god }}</div>
           </div>
         </div>
@@ -213,10 +213,34 @@ const hours = [
   { value: 21, label: '亥时 (21:00-23:00)' },
 ]
 
+// 大运显示12步
+const displayLuck = computed(() => {
+  if (!result.value?.major_luck) return []
+  return result.value.major_luck.slice(0, 12)
+})
+
 const handleCalculate = async () => {
   loading.value = true
   try {
-    result.value = await api.post('/bazi/calculate', form.value)
+    // 直接fetch，不检查token
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase
+    const response = await fetch(`${baseURL}/bazi/calculate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form.value),
+    })
+    if (!response.ok) {
+      let detail = '计算失败'
+      try {
+        const err = await response.json()
+        if (err.detail) {
+          detail = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail)
+        }
+      } catch {}
+      throw new Error(detail)
+    }
+    result.value = await response.json()
   } catch (e) {
     alert(e.message || '计算失败')
   } finally {

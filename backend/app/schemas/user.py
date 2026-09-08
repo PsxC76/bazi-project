@@ -6,7 +6,8 @@ import re
 
 class UserRegister(BaseModel):
     username: str = Field(..., min_length=6, max_length=50)
-    password: str = Field(..., min_length=8, max_length=128)
+    password: str = Field(..., min_length=6, max_length=128)
+    email: str = Field(...)
 
     @field_validator("username")
     @classmethod
@@ -20,6 +21,13 @@ class UserRegister(BaseModel):
     def validate_password(cls, v):
         if not re.match(r'^[a-zA-Z0-9_]+$', v):
             raise ValueError("密码只能包含字母、数字、下划线")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v):
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', v):
+            raise ValueError("请输入正确的邮箱地址")
         return v
 
 
@@ -49,7 +57,7 @@ class UserUpdate(BaseModel):
 
 class PasswordChange(BaseModel):
     old_password: str
-    new_password: str = Field(..., min_length=8, max_length=128)
+    new_password: str = Field(..., min_length=6, max_length=128)
 
 
 class Token(BaseModel):

@@ -433,7 +433,7 @@ def get_major_luck(
     start_age = 1  # 默认1岁起运
 
     major_luck = []
-    for i in range(1, 9):  # 8步大运
+    for i in range(1, 13):  # 12步大运
         if forward:
             gan_idx = (month_gan_idx + i) % 10
             zhi_idx = (month_zhi_idx + i) % 12

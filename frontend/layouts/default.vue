@@ -6,8 +6,8 @@
         <div class="flex items-center justify-between h-16">
           <!-- Logo -->
           <NuxtLink to="/" class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center">
-              <span class="text-white text-xl font-bold font-serif">命</span>
+            <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center text-2xl select-none" style="line-height:1">
+              <span>🔮</span>
             </div>
             <div>
               <h1 class="text-lg font-bold text-gray-900">八字命理案例库</h1>
@@ -39,18 +39,29 @@
               </NuxtLink>
 
               <!-- User Menu -->
-              <div class="relative" ref="menuRef">
-                <button @click="showMenu = !showMenu" class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+              <div
+                class="relative"
+                ref="menuRef"
+                @mouseenter="handleMouseEnter"
+                @mouseleave="handleMouseLeave"
+              >
+                <button
+                  @click="navigateTo('/profile')"
+                  class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+                >
                   <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-medium">
                     {{ userStore.user?.nickname?.[0] || userStore.user?.username?.[0] || 'U' }}
                   </div>
-                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
+                  <span class="text-sm text-gray-700 hidden sm:inline">{{ userStore.user?.nickname || userStore.user?.username || '' }}</span>
                 </button>
 
                 <Transition name="dropdown">
-                  <div v-if="showMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
+                  <div
+                    v-if="showMenu"
+                    class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50"
+                    @mouseenter="handleMenuMouseEnter"
+                    @mouseleave="handleMenuMouseLeave"
+                  >
                     <NuxtLink to="/profile" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="showMenu = false">
                       个人中心
                     </NuxtLink>
@@ -120,11 +131,11 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '~/stores/user'
 
 const userStore = useUserStore()
-const route = useRouter()
 
 const showMenu = ref(false)
 const showMobileMenu = ref(false)
 const menuRef = ref(null)
+let hoverTimer = null
 
 const navItems = [
   { label: '首页', path: '/' },
@@ -137,6 +148,32 @@ const handleLogout = () => {
   userStore.logout()
   showMenu.value = false
   navigateTo('/login')
+}
+
+// 悬停1秒显示菜单
+const handleMouseEnter = () => {
+  clearTimeout(hoverTimer)
+  hoverTimer = setTimeout(() => {
+    showMenu.value = true
+  }, 1000)
+}
+
+const handleMouseLeave = () => {
+  clearTimeout(hoverTimer)
+  hoverTimer = setTimeout(() => {
+    showMenu.value = false
+  }, 300)
+}
+
+// 下拉菜单区域的鼠标事件
+const handleMenuMouseEnter = () => {
+  clearTimeout(hoverTimer)
+}
+
+const handleMenuMouseLeave = () => {
+  hoverTimer = setTimeout(() => {
+    showMenu.value = false
+  }, 300)
 }
 
 // Close menu when clicking outside
@@ -152,6 +189,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  clearTimeout(hoverTimer)
 })
 </script>
 

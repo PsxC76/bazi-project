@@ -1,34 +1,18 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useApi } from '~/utils/api'
-
-interface User {
-  id: number
-  username: string
-  email: string
-  nickname: string | null
-  avatar: string | null
-  bio: string | null
-  is_admin: boolean
-  created_at: string
-}
+import { useApi, setAuthToken, getAuthToken } from '~/utils/api'
 
 export const useUserStore = defineStore('user', () => {
-  const user = ref<User | null>(null)
-  const token = ref<string | null>(null)
+  const user = ref(null)
   const api = useApi()
 
-  const isLoggedIn = computed(() => !!token.value)
+  const isLoggedIn = computed(() => !!getAuthToken())
   const isAdmin = computed(() => user.value?.is_admin || false)
 
   // Initialize from localStorage
   const init = () => {
     if (import.meta.client) {
-      const savedToken = localStorage.getItem('token')
       const savedUser = localStorage.getItem('user')
-      if (savedToken) {
-        token.value = savedToken
-      }
       if (savedUser) {
         try {
           user.value = JSON.parse(savedUser)
@@ -39,39 +23,36 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  const login = async (username: string, password: string) => {
+  const login = async (username, password) => {
     const data = await api.post('/users/login', { username, password })
-    token.value = data.access_token
+    setAuthToken(data.access_token)
     user.value = data.user
     if (import.meta.client) {
-      localStorage.setItem('token', data.access_token)
       localStorage.setItem('user', JSON.stringify(data.user))
     }
     return data
   }
 
-  const register = async (username: string, password: string) => {
-    const data = await api.post('/users/register', { username, password })
-    token.value = data.access_token
+  const register = async (username, password, email) => {
+    const data = await api.post('/users/register', { username, password, email })
+    setAuthToken(data.access_token)
     user.value = data.user
     if (import.meta.client) {
-      localStorage.setItem('token', data.access_token)
       localStorage.setItem('user', JSON.stringify(data.user))
     }
     return data
   }
 
   const logout = () => {
-    token.value = null
+    setAuthToken(null)
     user.value = null
     if (import.meta.client) {
-      localStorage.removeItem('token')
       localStorage.removeItem('user')
     }
   }
 
   const fetchProfile = async () => {
-    if (!token.value) return
+    if (!getAuthToken()) return
     try {
       const data = await api.get('/users/me')
       user.value = data
@@ -83,7 +64,7 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  const updateProfile = async (data: { nickname?: string; bio?: string }) => {
+  const updateProfile = async (data) => {
     const result = await api.put('/users/me', data)
     user.value = result
     if (import.meta.client) {
@@ -92,14 +73,14 @@ export const useUserStore = defineStore('user', () => {
     return result
   }
 
-  const changePassword = async (oldPassword: string, newPassword: string) => {
+  const changePassword = async (oldPassword, newPassword) => {
     return await api.post('/users/me/password', {
       old_password: oldPassword,
       new_password: newPassword,
     })
   }
 
-  const uploadAvatar = async (file: File) => {
+  const uploadAvatar = async (file) => {
     const formData = new FormData()
     formData.append('file', file)
     const result = await api.upload('/users/me/avatar', formData)
@@ -110,15 +91,16 @@ export const useUserStore = defineStore('user', () => {
     return result
   }
 
-  const sendEmailCode = async (email: string) => {
-    return await api.post('/users/me/email/send-code', { email })
+  const sendEmailCode = async (email) => {
+    return await api.post('/users/email/send-code', { email })
   }
 
-  const verifyEmail = async (email: string, code: string) => {
-    const result = await api.post('/users/me/email/verify', { email, code })
-    // 刷新用户信息
-    await fetchProfile()
-    return result
+  const verifyEmail = async (email, code) => {
+    return await api.post('/users/email/verify', { email, code })
+  }
+
+  const unbindEmail = async () => {
+    return await api.post('/users/me/email/unbind')
   }
 
   // Init on store creation
@@ -126,7 +108,6 @@ export const useUserStore = defineStore('user', () => {
 
   return {
     user,
-    token,
     isLoggedIn,
     isAdmin,
     login,
@@ -138,5 +119,6 @@ export const useUserStore = defineStore('user', () => {
     uploadAvatar,
     sendEmailCode,
     verifyEmail,
+    unbindEmail,
   }
 })

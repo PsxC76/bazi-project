@@ -31,14 +31,15 @@
             </div>
           </div>
 
-          <div class="flex gap-2">
+          <!-- 仅案例所有者可编辑/删除 -->
+          <div v-if="isOwner" class="flex gap-2">
             <NuxtLink :to="`/cases/${caseData.id}/edit`" class="btn-secondary text-sm">编辑</NuxtLink>
             <button @click="handleDelete" class="px-4 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50">删除</button>
           </div>
         </div>
 
         <!-- Tags -->
-        <div v-if="caseData.tags.length" class="flex flex-wrap gap-2 mt-4">
+        <div v-if="caseData.tags && caseData.tags.length" class="flex flex-wrap gap-2 mt-4">
           <span v-for="tag in caseData.tags" :key="tag.id" class="tag-item">
             {{ tag.name }}: {{ tag.value }}
           </span>
@@ -94,10 +95,10 @@
       <!-- Major Luck -->
       <div v-if="caseData.bazi_result?.major_luck" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
         <h2 class="text-xl font-bold text-gray-900 mb-6 font-serif">大运</h2>
-        <div class="flex flex-wrap gap-3">
-          <div v-for="luck in caseData.bazi_result.major_luck" :key="luck.pillar" class="flex-shrink-0 p-4 bg-gradient-to-br from-primary-50 to-white rounded-xl border border-primary-100 min-w-[100px] text-center">
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-3">
+          <div v-for="(luck, idx) in caseData.bazi_result.major_luck.slice(0, 12)" :key="idx" class="p-3 bg-gradient-to-br from-primary-50 to-white rounded-xl border border-primary-100 text-center">
             <div class="text-xs text-gray-400 mb-1">{{ luck.start_age }}-{{ luck.end_age }}岁</div>
-            <div class="text-xl font-bold font-serif text-primary-800">{{ luck.pillar }}</div>
+            <div class="text-lg font-bold font-serif text-primary-800">{{ luck.pillar }}</div>
             <div class="text-xs text-primary-600 mt-1">{{ luck.ten_god }}</div>
           </div>
         </div>
@@ -116,6 +117,57 @@
         </div>
       </div>
 
+      <!-- Comments -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
+        <h2 class="text-xl font-bold text-gray-900 mb-6 font-serif">评论区</h2>
+
+        <!-- Comment Input -->
+        <div v-if="userStore.isLoggedIn" class="mb-6">
+          <textarea
+            v-model="commentText"
+            class="form-input"
+            rows="3"
+            placeholder="写下你的评论..."
+          ></textarea>
+          <div class="flex justify-end mt-3">
+            <button
+              @click="handlePostComment"
+              class="btn-primary text-sm"
+              :disabled="commentPosting || !commentText.trim()"
+            >
+              {{ commentPosting ? '发送中...' : '发表评论' }}
+            </button>
+          </div>
+        </div>
+        <div v-else class="mb-6 p-4 bg-gray-50 rounded-xl text-center">
+          <p class="text-sm text-gray-500">
+            <NuxtLink to="/login" class="text-primary-600 font-medium hover:text-primary-700">登录</NuxtLink>后即可发表评论
+          </p>
+        </div>
+
+        <!-- Comment List -->
+        <div v-if="commentsLoading" class="text-center py-4">
+          <div class="inline-block w-6 h-6 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+        </div>
+        <div v-else-if="comments.length === 0" class="text-center py-8 text-gray-400">
+          暂无评论，快来发表第一条评论吧
+        </div>
+        <div v-else class="space-y-4">
+          <div v-for="comment in comments" :key="comment.id" class="flex gap-3 p-4 bg-gray-50 rounded-xl">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+              {{ comment.user?.nickname?.[0] || comment.user?.username?.[0] || 'U' }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-sm font-medium text-gray-900">{{ comment.user?.nickname || comment.user?.username || '匿名用户' }}</span>
+                <span class="text-xs text-gray-400">{{ formatDate(comment.created_at) }}</span>
+              </div>
+              <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ comment.content }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Timestamps -->
       <div class="text-sm text-gray-400 text-center">
         创建时间：{{ formatDate(caseData.created_at) }} · 更新时间：{{ formatDate(caseData.updated_at) }}
@@ -125,15 +177,28 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useApi } from '~/utils/api'
+import { useUserStore } from '~/stores/user'
 
 const route = useRoute()
 const api = useApi()
+const userStore = useUserStore()
 const loading = ref(true)
 const caseData = ref(null)
 
+// Comments
+const comments = ref([])
+const commentsLoading = ref(false)
+const commentText = ref('')
+const commentPosting = ref(false)
+
 useHead({ title: '案例详情 - 八字命理案例库' })
+
+const isOwner = computed(() => {
+  if (!userStore.isLoggedIn || !caseData.value) return false
+  return caseData.value.user_id === userStore.user?.id
+})
 
 const fetchCase = async () => {
   try {
@@ -143,6 +208,33 @@ const fetchCase = async () => {
     navigateTo('/cases')
   } finally {
     loading.value = false
+  }
+}
+
+const fetchComments = async () => {
+  commentsLoading.value = true
+  try {
+    const data = await api.get(`/cases/${route.params.id}/comments`)
+    comments.value = Array.isArray(data) ? data : (data.items || [])
+  } catch (e) {
+    // 评论加载失败不影响页面展示
+    comments.value = []
+  } finally {
+    commentsLoading.value = false
+  }
+}
+
+const handlePostComment = async () => {
+  if (!commentText.value.trim()) return
+  commentPosting.value = true
+  try {
+    await api.post(`/cases/${route.params.id}/comments`, { content: commentText.value.trim() })
+    commentText.value = ''
+    await fetchComments()
+  } catch (e) {
+    alert(e.message || '评论失败')
+  } finally {
+    commentPosting.value = false
   }
 }
 
@@ -167,9 +259,13 @@ const getElementBgClass = (element) => {
 }
 
 const formatDate = (dateStr) => {
+  if (!dateStr) return ''
   const d = new Date(dateStr)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-onMounted(fetchCase)
+onMounted(() => {
+  fetchCase()
+  fetchComments()
+})
 </script>

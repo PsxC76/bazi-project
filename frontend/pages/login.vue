@@ -2,8 +2,8 @@
   <div class="min-h-[80vh] flex items-center justify-center py-12 px-4">
     <div class="w-full max-w-md">
       <div class="text-center mb-8">
-        <div class="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <span class="text-white text-3xl font-bold font-serif">命</span>
+        <div class="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-4 text-4xl">
+          <span>🔮</span>
         </div>
         <h1 class="text-2xl font-bold text-gray-900">登录账号</h1>
         <p class="text-gray-500 mt-2">欢迎回来，请输入您的账号信息</p>

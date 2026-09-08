@@ -66,3 +66,4 @@ class Case(Base):
     # Relationships
     owner = relationship("User", back_populates="cases", lazy="selectin")
     tags = relationship("Tag", secondary=case_tags, back_populates="cases", lazy="selectin")
+    comments = relationship("Comment", back_populates="case", lazy="selectin", cascade="all, delete-orphan")

@@ -1,23 +1,43 @@
+// 全局token管理
+let authToken = null
+
+export function setAuthToken(token) {
+  authToken = token
+  if (import.meta.client) {
+    if (token) {
+      localStorage.setItem('token', token)
+    } else {
+      localStorage.removeItem('token')
+    }
+  }
+}
+
+export function getAuthToken() {
+  if (authToken) return authToken
+  if (import.meta.client) {
+    authToken = localStorage.getItem('token')
+  }
+  return authToken
+}
+
 export function useApi() {
   const config = useRuntimeConfig()
-  const baseURL = config.public.apiBase as string
+  const baseURL = config.public.apiBase
 
-  const getHeaders = (): Record<string, string> => {
-    const headers: Record<string, string> = {
+  const getHeaders = () => {
+    const headers = {
       'Content-Type': 'application/json',
     }
-    if (import.meta.client) {
-      const token = localStorage.getItem('token')
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
+    const token = getAuthToken()
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
     }
     return headers
   }
 
-  const request = async (method: string, path: string, body?: any) => {
+  const request = async (method, path, body) => {
     const url = `${baseURL}${path}`
-    const options: RequestInit = {
+    const options = {
       method,
       headers: getHeaders(),
     }
@@ -26,10 +46,10 @@ export function useApi() {
       options.body = JSON.stringify(body)
     }
 
-    let response: Response
+    let response
     try {
       response = await fetch(url, options)
-    } catch (e: any) {
+    } catch (e) {
       throw new Error('无法连接到服务器，请确认后端已启动 (localhost:8000)')
     }
 
@@ -37,12 +57,11 @@ export function useApi() {
       let detail = `请求失败 (${response.status})`
       try {
         const err = await response.json()
-        // FastAPI 返回 {detail: "..."} 或 {detail: [{msg: "..."}, ...]}
         if (err.detail) {
           if (typeof err.detail === 'string') {
             detail = err.detail
           } else if (Array.isArray(err.detail)) {
-            detail = err.detail.map((d: any) => d.msg || JSON.stringify(d)).join('; ')
+            detail = err.detail.map((d) => d.msg || JSON.stringify(d)).join('; ')
           } else {
             detail = JSON.stringify(err.detail)
           }
@@ -56,24 +75,22 @@ export function useApi() {
     return response.json()
   }
 
-  const upload = async (path: string, formData: FormData) => {
+  const upload = async (path, formData) => {
     const url = `${baseURL}${path}`
-    const headers: Record<string, string> = {}
-    if (import.meta.client) {
-      const token = localStorage.getItem('token')
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
+    const headers = {}
+    const token = getAuthToken()
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
     }
 
-    let response: Response
+    let response
     try {
       response = await fetch(url, {
         method: 'POST',
         headers,
         body: formData,
       })
-    } catch (e: any) {
+    } catch (e) {
       throw new Error('无法连接到服务器，请确认后端已启动 (localhost:8000)')
     }
 
@@ -94,10 +111,10 @@ export function useApi() {
   }
 
   return {
-    get: (path: string) => request('GET', path),
-    post: (path: string, body?: any) => request('POST', path, body),
-    put: (path: string, body?: any) => request('PUT', path, body),
-    delete: (path: string) => request('DELETE', path),
+    get: (path) => request('GET', path),
+    post: (path, body) => request('POST', path, body),
+    put: (path, body) => request('PUT', path, body),
+    delete: (path) => request('DELETE', path),
     upload,
   }
 }

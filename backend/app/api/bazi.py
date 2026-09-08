@@ -1,6 +1,4 @@
-from fastapi import APIRouter, Depends
-from app.core.security import get_current_user
-from app.models.user import User
+from fastapi import APIRouter
 from app.schemas.bazi import BaziInput, BaziResult
 from app.services.bazi_calculator import calculate_bazi
 
@@ -8,10 +6,7 @@ router = APIRouter(prefix="/bazi", tags=["八字排盘"])
 
 
 @router.post("/calculate", summary="八字排盘计算")
-async def calculate(
-    data: BaziInput,
-    current_user: User = Depends(get_current_user),
-):
+async def calculate(data: BaziInput):
     """
     根据出生日期时间进行八字排盘
 

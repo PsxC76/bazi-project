@@ -23,9 +23,15 @@ async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="该账号已被注册")
 
+    # 检查邮箱是否已被绑定
+    result = await db.execute(select(User).where(User.email == data.email))
+    if result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="该邮箱已被注册")
+
     user = User(
         username=data.username,
         hashed_password=get_password_hash(data.password),
+        email=data.email,
         nickname=data.username,
     )
     db.add(user)
@@ -157,6 +163,56 @@ async def verify_email(
     await db.refresh(current_user)
 
     return {"message": "邮箱绑定成功", "email": data.email}
+
+
+@router.post("/me/email/unbind", summary="邮箱解绑")
+async def unbind_email(
+    data: EmailVerifyRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """邮箱解绑：发送验证码 -> 验证 -> 解绑"""
+    if not current_user.email:
+        raise HTTPException(status_code=400, detail="当前未绑定邮箱")
+
+    if current_user.email != data.email:
+        raise HTTPException(status_code=400, detail="邮箱与当前绑定的邮箱不一致")
+
+    # 验证验证码
+    valid = await verify_code(db, data.email, data.code, purpose="unbind")
+    if not valid:
+        raise HTTPException(status_code=400, detail="验证码错误或已过期")
+
+    # 解绑邮箱
+    current_user.email = None
+    current_user.email_verified = False
+    await db.flush()
+    await db.refresh(current_user)
+
+    return {"message": "邮箱解绑成功"}
+
+
+@router.post("/me/email/unbind/send-code", summary="发送邮箱解绑验证码")
+async def send_unbind_code(
+    data: EmailBindRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not current_user.email:
+        raise HTTPException(status_code=400, detail="当前未绑定邮箱")
+
+    if current_user.email != data.email:
+        raise HTTPException(status_code=400, detail="邮箱与当前绑定的邮箱不一致")
+
+    # 创建验证码
+    code = await create_verification_code(db, data.email, purpose="unbind")
+
+    # 发送邮件
+    sent = await send_verification_email(data.email, code)
+    if not sent:
+        raise HTTPException(status_code=500, detail="邮件发送失败，请稍后重试")
+
+    return {"message": "验证码已发送到您的邮箱，10分钟内有效"}
 
 
 # Admin endpoints

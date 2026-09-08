@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.core.database import init_db
-from app.api import users, cases, bazi
+from app.api import users, cases, bazi, comments
 
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
@@ -36,6 +36,7 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 app.include_router(users.router, prefix=settings.API_V1_PREFIX)
 app.include_router(cases.router, prefix=settings.API_V1_PREFIX)
 app.include_router(bazi.router, prefix=settings.API_V1_PREFIX)
+app.include_router(comments.router, prefix=settings.API_V1_PREFIX)
 
 @app.get("/")
 async def root():

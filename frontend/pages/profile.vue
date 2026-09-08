@@ -24,18 +24,57 @@
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8 mb-6">
       <h2 class="text-lg font-bold text-gray-900 mb-6">邮箱绑定</h2>
 
-      <div v-if="userStore.user?.email && userStore.user?.email_verified" class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-          <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
+      <!-- 已绑定邮箱 -->
+      <div v-if="userStore.user?.email && userStore.user?.email_verified">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-gray-900">{{ userStore.user.email }}</p>
+            <p class="text-xs text-primary-600">已验证</p>
+          </div>
         </div>
-        <div>
-          <p class="text-sm font-medium text-gray-900">{{ userStore.user.email }}</p>
-          <p class="text-xs text-primary-600">已验证</p>
+
+        <!-- 解绑邮箱流程 -->
+        <div v-if="!unbindMode">
+          <button @click="startUnbind" class="text-sm text-red-500 hover:text-red-700 underline">解绑邮箱</button>
+        </div>
+
+        <div v-if="unbindMode" class="mt-4 space-y-4 border-t border-gray-100 pt-4">
+          <p class="text-sm text-gray-600">解绑邮箱需要验证身份，验证码将发送到 <strong>{{ userStore.user.email }}</strong></p>
+          <button
+            @click="handleSendUnbindCode"
+            class="btn-secondary text-sm"
+            :disabled="unbindSending || unbindCooldown > 0"
+          >
+            {{ unbindCooldown > 0 ? `${unbindCooldown}s后重发` : (unbindSending ? '发送中...' : '发送验证码') }}
+          </button>
+          <div v-if="unbindStep === 2">
+            <label class="form-label">验证码</label>
+            <input
+              v-model="unbindCode"
+              type="text"
+              class="form-input text-center text-2xl tracking-[0.5em]"
+              maxlength="6"
+              placeholder="000000"
+              @input="unbindCode = unbindCode.replace(/\D/g, '')"
+            />
+            <div class="flex gap-3 mt-3">
+              <button @click="handleUnbindEmail" class="btn-primary text-sm" :disabled="unbindVerifying">
+                {{ unbindVerifying ? '解绑中...' : '确认解绑' }}
+              </button>
+              <button @click="cancelUnbind" class="btn-secondary text-sm">取消</button>
+            </div>
+          </div>
+          <div v-if="unbindError" class="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{{ unbindError }}</div>
+          <div v-if="unbindSuccess" class="text-green-600 text-sm bg-green-50 p-3 rounded-lg">{{ unbindSuccess }}</div>
         </div>
       </div>
 
+      <!-- 未绑定邮箱 -->
       <div v-else>
         <p class="text-sm text-gray-500 mb-4">绑定邮箱后可以接收通知和找回密码</p>
 
@@ -108,7 +147,7 @@
     </div>
 
     <!-- Password -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8 mb-6">
       <h2 class="text-lg font-bold text-gray-900 mb-6">修改密码</h2>
       <form @submit.prevent="handleChangePassword" class="space-y-4">
         <div>
@@ -117,7 +156,7 @@
         </div>
         <div>
           <label class="form-label">新密码</label>
-          <input v-model="passwordForm.newPassword" type="password" class="form-input" placeholder="8位以上，字母、数字或下划线" required>
+          <input v-model="passwordForm.newPassword" type="password" class="form-input" placeholder="6位以上，字母、数字或下划线" required>
         </div>
         <div>
           <label class="form-label">确认新密码</label>
@@ -127,6 +166,13 @@
         <div v-if="passwordSuccess" class="text-green-600 text-sm bg-green-50 p-3 rounded-lg">{{ passwordSuccess }}</div>
         <button type="submit" class="btn-primary" :disabled="passwordSaving">{{ passwordSaving ? '修改中...' : '修改密码' }}</button>
       </form>
+    </div>
+
+    <!-- Logout -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
+      <button @click="handleLogout" class="w-full py-3 text-base text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors font-medium">
+        退出登录
+      </button>
     </div>
   </div>
 </template>
@@ -142,14 +188,25 @@ const userStore = useUserStore()
 const profileForm = ref({ nickname: '', bio: '' })
 const profileSaving = ref(false)
 
-// Email
-const emailStep = ref(1)  // 1=输入邮箱, 2=输入验证码
+// Email binding
+const emailStep = ref(1)
 const emailForm = ref({ email: '', code: '' })
 const emailErrors = ref({ email: '' })
 const emailError = ref('')
 const emailSuccess = ref('')
 const emailSending = ref(false)
 const emailVerifying = ref(false)
+
+// Email unbind
+const unbindMode = ref(false)
+const unbindStep = ref(1)
+const unbindCode = ref('')
+const unbindSending = ref(false)
+const unbindVerifying = ref(false)
+const unbindError = ref('')
+const unbindSuccess = ref('')
+const unbindCooldown = ref(0)
+let unbindCooldownTimer = null
 
 // Password
 const passwordForm = ref({ oldPassword: '', newPassword: '', confirmPassword: '' })
@@ -216,10 +273,76 @@ const handleVerifyCode = async () => {
     emailSuccess.value = '邮箱绑定成功！'
     emailStep.value = 1
     emailForm.value = { email: '', code: '' }
+    await userStore.fetchProfile()
   } catch (e) {
     emailError.value = e.message || '验证失败'
   } finally {
     emailVerifying.value = false
+  }
+}
+
+// 解绑邮箱
+const startUnbind = () => {
+  unbindMode.value = true
+  unbindStep.value = 1
+  unbindCode.value = ''
+  unbindError.value = ''
+  unbindSuccess.value = ''
+}
+
+const cancelUnbind = () => {
+  unbindMode.value = false
+  unbindStep.value = 1
+  unbindCode.value = ''
+  unbindError.value = ''
+  unbindSuccess.value = ''
+}
+
+const startUnbindCooldown = () => {
+  unbindCooldown.value = 60
+  unbindCooldownTimer = setInterval(() => {
+    unbindCooldown.value--
+    if (unbindCooldown.value <= 0) {
+      clearInterval(unbindCooldownTimer)
+    }
+  }, 1000)
+}
+
+const handleSendUnbindCode = async () => {
+  unbindError.value = ''
+  unbindSending.value = true
+  try {
+    await userStore.unbindEmail()
+    unbindStep.value = 2
+    startUnbindCooldown()
+  } catch (e) {
+    unbindError.value = e.message || '发送失败'
+  } finally {
+    unbindSending.value = false
+  }
+}
+
+const handleUnbindEmail = async () => {
+  unbindError.value = ''
+  unbindSuccess.value = ''
+
+  if (unbindCode.value.length !== 6) {
+    unbindError.value = '请输入6位验证码'
+    return
+  }
+
+  unbindVerifying.value = true
+  try {
+    await userStore.unbindEmail()
+    unbindSuccess.value = '邮箱解绑成功！'
+    await userStore.fetchProfile()
+    setTimeout(() => {
+      cancelUnbind()
+    }, 2000)
+  } catch (e) {
+    unbindError.value = e.message || '解绑失败'
+  } finally {
+    unbindVerifying.value = false
   }
 }
 
@@ -239,8 +362,8 @@ const handleChangePassword = async () => {
   passwordError.value = ''
   passwordSuccess.value = ''
 
-  if (passwordForm.value.newPassword.length < 8) {
-    passwordError.value = '新密码长度不能少于8位'
+  if (passwordForm.value.newPassword.length < 6) {
+    passwordError.value = '新密码长度不能少于6位'
     return
   }
   if (!/^[a-zA-Z0-9_]+$/.test(passwordForm.value.newPassword)) {
@@ -262,5 +385,10 @@ const handleChangePassword = async () => {
   } finally {
     passwordSaving.value = false
   }
+}
+
+const handleLogout = () => {
+  userStore.logout()
+  navigateTo('/login')
 }
 </script>
